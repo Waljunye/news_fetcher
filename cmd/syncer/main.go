@@ -34,7 +34,6 @@ func main() {
 	}
 
 	logger = setupLogger(cfg.LogLevel)
-	logger.Info(cfg.RabbitMQ.URL)
 
 	db, err := sqlx.Connect("postgres", cfg.Database.DSN())
 	if err != nil {
