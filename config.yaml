@@ -1,0 +1,29 @@
+database:
+  host: localhost
+  port: 5432
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+  dbname: news_fetcher
+  sslmode: disable
+
+rabbitmq:
+  url: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@localhost:5672/
+  exchange: news_fetcher
+  routing_key: articles
+  queue_name: cms_articles
+
+api:
+  base_url: https://content-ecb.pulselive.com/content/ecb/text/EN/
+  page_size: 20
+  timeout: 30s
+  retry:
+    max_attempts: 3
+    initial_backoff: 1s
+    max_backoff: 30s
+
+sync:
+  interval: 5m
+  max_pages_per_sync: 5
+  max_historical_days: 30
+
+log_level: info
