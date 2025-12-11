@@ -132,6 +132,12 @@ func (c *Config) setDefaults() {
 	if c.Sync.MaxHistoricalDays == 0 {
 		c.Sync.MaxHistoricalDays = 30
 	}
+	if c.Database.Host == "" {
+		c.Database.Host = "localhost"
+	}
+	if c.Database.DBName == "" {
+		c.Database.DBName = "news_fetcher"
+	}
 	if c.Database.ConnectTimeout == 0 {
 		c.Database.ConnectTimeout = 10 * time.Second
 	}

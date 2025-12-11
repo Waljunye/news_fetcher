@@ -4,38 +4,24 @@ A service that synchronizes news articles from external APIs. Periodically polls
 
 ## Quick Start
 
-### Linux / macOS
-
 ```bash
-# Start infrastructure and wait for healthy
-docker-compose up -d
-until docker-compose exec postgres pg_isready -U postgres; do sleep 1; done
-until docker-compose exec rabbitmq rabbitmq-diagnostics is_running; do sleep 1; done
-until docker-compose exec rabbitmq rabbitmq-diagnostics is_booting; do sleep 1; done
-until docker-compose exec rabbitmq rabbitmq-diagnostics check_port_listener 5672; do sleep 1; done
+# Create .env file
+cat > .env << EOF
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=news_fetcher
+DB_PORT=5432
+RABBITMQ_USER=guest
+RABBITMQ_PASSWORD=guest
+RABBITMQ_PORT=5672
+RABBITMQ_MGMT_PORT=15672
+EOF
 
-# Apply migrations
-migrate -path migrations -database "postgres://postgres:postgres@localhost:5432/news_fetcher?sslmode=disable" up
+# Build and start all services
+docker compose up -d --build
 
-# Run service
-go run cmd/syncer/main.go -config config.yaml
-```
-
-### Windows (PowerShell)
-
-```powershell
-# Start infrastructure and wait for healthy
-docker-compose up -d
-do { Start-Sleep 1 } until (docker-compose exec postgres pg_isready -U postgres)
-do { Start-Sleep 1 } until (docker-compose exec rabbitmq rabbitmq-diagnostics is_running)
-do { Start-Sleep 1 } until (docker-compose exec rabbitmq rabbitmq-diagnostics is_booting)
-do { Start-Sleep 1 } until (docker-compose exec rabbitmq rabbitmq-diagnostics check_port_listener 5672)
-
-# Apply migrations
-migrate -path migrations -database "postgres://postgres:postgres@localhost:5432/news_fetcher?sslmode=disable" up
-
-# Run service
-go run cmd/syncer/main.go -config config.yaml
+# View logs
+docker compose logs -f syncer
 ```
 
 ## Docker Compose

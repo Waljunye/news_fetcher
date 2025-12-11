@@ -1,9 +1,9 @@
 database:
-  host: localhost
+  host: ${DB_HOST}
   port: 5432
   user: ${DB_USER}
   password: ${DB_PASSWORD}
-  dbname: news_fetcher
+  dbname: ${DB_NAME}
   sslmode: disable
   connect_timeout: 10s
   max_open_conns: 25
@@ -11,7 +11,7 @@ database:
   conn_max_lifetime: 5m
 
 rabbitmq:
-  url: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@localhost:5672/
+  url: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:5672/
   exchange: news_fetcher
   routing_key: articles
   queue_name: cms_articles
@@ -32,4 +32,4 @@ sync:
   max_pages_per_sync: 5
   max_historical_days: 30
 
-log_level: info
+log_level: debug

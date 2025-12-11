@@ -35,6 +35,12 @@ func main() {
 
 	logger = setupLogger(cfg.LogLevel)
 
+	logger.Debug("database config",
+		"host", cfg.Database.Host,
+		"port", cfg.Database.Port,
+		"dbname", cfg.Database.DBName,
+	)
+
 	dbCtx, dbCancel := context.WithTimeout(context.Background(), cfg.Database.ConnectTimeout)
 	defer dbCancel()
 
