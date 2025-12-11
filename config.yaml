@@ -5,6 +5,10 @@ database:
   password: ${DB_PASSWORD}
   dbname: news_fetcher
   sslmode: disable
+  connect_timeout: 10s
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 5m
 
 rabbitmq:
   url: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@localhost:5672/
@@ -15,6 +19,7 @@ rabbitmq:
 api:
   base_url: https://content-ecb.pulselive.com/content/ecb/text/EN/
   page_size: 20
+  page_delay: 500ms
   timeout: 30s
   retry:
     max_attempts: 3
@@ -23,6 +28,7 @@ api:
 
 sync:
   interval: 5m
+  timeout: 5m
   max_pages_per_sync: 5
   max_historical_days: 30
 
