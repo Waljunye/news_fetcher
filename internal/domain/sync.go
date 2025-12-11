@@ -9,6 +9,7 @@ type SyncStats struct {
 	New       int
 	Updated   int
 	Skipped   int
+	Errors    int
 	Published int
 	Duration  time.Duration
 }

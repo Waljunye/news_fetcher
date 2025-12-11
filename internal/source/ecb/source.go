@@ -20,6 +20,7 @@ const (
 type Config struct {
 	BaseURL        string
 	PageSize       int
+	PageDelay      time.Duration
 	Timeout        time.Duration
 	MaxAttempts    int
 	InitialBackoff time.Duration
@@ -28,13 +29,14 @@ type Config struct {
 
 // Source implements source.Source for ECB Cricket API.
 type Source struct {
-	httpClient *http.Client
-	baseURL    string
-	pageSize   int
+	httpClient     *http.Client
+	baseURL        string
+	pageSize       int
+	pageDelay      time.Duration
 	maxAttempts    int
 	initialBackoff time.Duration
 	maxBackoff     time.Duration
-	logger     *slog.Logger
+	logger         *slog.Logger
 }
 
 // New creates a new ECB source.
@@ -45,6 +47,7 @@ func New(cfg Config, logger *slog.Logger) *Source {
 		},
 		baseURL:        cfg.BaseURL,
 		pageSize:       cfg.PageSize,
+		pageDelay:      cfg.PageDelay,
 		maxAttempts:    cfg.MaxAttempts,
 		initialBackoff: cfg.InitialBackoff,
 		maxBackoff:     cfg.MaxBackoff,
@@ -64,28 +67,36 @@ func (s *Source) Name() string {
 
 // FetchArticles fetches articles from ECB API.
 func (s *Source) FetchArticles(ctx context.Context, maxPages int) ([]domain.Article, error) {
-	var allContent []Content
+	var fetchedContent []Content
 
 	for page := 0; page < maxPages; page++ {
-		resp, err := s.fetchPage(ctx, page)
-		if err != nil {
-			return s.transform(allContent), fmt.Errorf("fetch page %d: %w", page, err)
+		if page > 0 && s.pageDelay > 0 {
+			select {
+			case <-ctx.Done():
+				return s.transform(fetchedContent), ctx.Err()
+			case <-time.After(s.pageDelay):
+			}
 		}
 
-		allContent = append(allContent, resp.Content...)
+		pageResp, err := s.fetchPage(ctx, page)
+		if err != nil {
+			return s.transform(fetchedContent), fmt.Errorf("fetch page %d: %w", page, err)
+		}
+
+		fetchedContent = append(fetchedContent, pageResp.Content...)
 
 		s.logger.Debug("fetched page",
 			"page", page,
-			"articles", len(resp.Content),
-			"total", len(allContent),
+			"articles", len(pageResp.Content),
+			"total", len(fetchedContent),
 		)
 
-		if page >= resp.PageInfo.NumPages-1 {
+		if page >= pageResp.PageInfo.NumPages-1 {
 			break
 		}
 	}
 
-	return s.transform(allContent), nil
+	return s.transform(fetchedContent), nil
 }
 
 func (s *Source) fetchPage(ctx context.Context, page int) (*APIResponse, error) {

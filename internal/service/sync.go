@@ -82,19 +82,13 @@ func (s *SyncService) Sync(ctx context.Context) (*domain.SyncStats, error) {
 		article := &toSync[i]
 		isNew, err := s.saveArticle(ctx, article)
 		if err != nil {
-			s.logger.Error("failed to save article",
-				"external_id", article.ExternalID,
-				"error", err,
-			)
+			stats.Errors++
 			continue
 		}
 
 		if s.publisher != nil {
 			if err := s.publisher.Publish(ctx, article, isNew); err != nil {
-				s.logger.Error("failed to publish article to queue",
-					"external_id", article.ExternalID,
-					"error", err,
-				)
+				stats.Errors++
 			} else {
 				stats.Published++
 			}
@@ -108,7 +102,7 @@ func (s *SyncService) Sync(ctx context.Context) (*domain.SyncStats, error) {
 	}
 
 	if err := s.updateSyncState(ctx, stats); err != nil {
-		s.logger.Error("failed to update sync state", "error", err)
+		return stats, fmt.Errorf("update sync state: %w", err)
 	}
 
 	stats.Duration = time.Since(startTime)
@@ -117,6 +111,7 @@ func (s *SyncService) Sync(ctx context.Context) (*domain.SyncStats, error) {
 		"new", stats.New,
 		"updated", stats.Updated,
 		"skipped", stats.Skipped,
+		"errors", stats.Errors,
 		"published", stats.Published,
 		"duration", stats.Duration,
 	)
@@ -139,12 +134,12 @@ func (s *SyncService) filterForSync(ctx context.Context, articles []domain.Artic
 		return nil, nil
 	}
 
-	ids := make([]int64, len(articles))
+	externalIDs := make([]int64, len(articles))
 	for i, a := range articles {
-		ids[i] = a.ExternalID
+		externalIDs[i] = a.ExternalID
 	}
 
-	existing, err := s.articles.GetExistingBySourceAndExternalIDs(ctx, s.source.ID(), ids)
+	existing, err := s.articles.GetExistingBySourceAndExternalIDs(ctx, s.source.ID(), externalIDs)
 	if err != nil {
 		return nil, err
 	}

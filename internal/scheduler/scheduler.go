@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"news_fetcher/internal/config"
 	"news_fetcher/internal/domain"
 )
 
@@ -14,25 +15,25 @@ type Syncer interface {
 }
 
 type Scheduler struct {
-	syncer   Syncer
-	interval time.Duration
-	logger   *slog.Logger
+	syncer Syncer
+	cfg    config.SyncConfig
+	logger *slog.Logger
 }
 
-func NewScheduler(syncer Syncer, interval time.Duration, logger *slog.Logger) *Scheduler {
+func NewScheduler(syncer Syncer, cfg config.SyncConfig, logger *slog.Logger) *Scheduler {
 	return &Scheduler{
-		syncer:   syncer,
-		interval: interval,
-		logger:   logger,
+		syncer: syncer,
+		cfg:    cfg,
+		logger: logger,
 	}
 }
 
 func (s *Scheduler) Start(ctx context.Context) error {
-	s.logger.Info("scheduler started", "interval", s.interval)
+	s.logger.Info("scheduler started", "interval", s.cfg.Interval)
 
 	s.runSync(ctx)
 
-	ticker := time.NewTicker(s.interval)
+	ticker := time.NewTicker(s.cfg.Interval)
 	defer ticker.Stop()
 
 	for {
@@ -47,7 +48,7 @@ func (s *Scheduler) Start(ctx context.Context) error {
 }
 
 func (s *Scheduler) runSync(ctx context.Context) {
-	syncCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	syncCtx, cancel := context.WithTimeout(ctx, s.cfg.Timeout)
 	defer cancel()
 
 	if _, err := s.syncer.Sync(syncCtx); err != nil {

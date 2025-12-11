@@ -35,17 +35,20 @@ func main() {
 
 	logger = setupLogger(cfg.LogLevel)
 
-	db, err := sqlx.Connect("postgres", cfg.Database.DSN())
+	dbCtx, dbCancel := context.WithTimeout(context.Background(), cfg.Database.ConnectTimeout)
+	defer dbCancel()
+
+	db, err := sqlx.ConnectContext(dbCtx, "postgres", cfg.Database.DSN())
 	if err != nil {
 		logger.Error("failed to connect to database", "error", err)
 		os.Exit(1)
 	}
 	defer db.Close()
 
-	if err := db.Ping(); err != nil {
-		logger.Error("failed to ping database", "error", err)
-		os.Exit(1)
-	}
+	db.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+	db.SetMaxIdleConns(cfg.Database.MaxIdleConns)
+	db.SetConnMaxLifetime(cfg.Database.ConnMaxLifetime)
+
 	logger.Info("connected to database")
 
 	// Initialize RabbitMQ publisher
@@ -71,6 +74,7 @@ func main() {
 	ecbSource := ecb.New(ecb.Config{
 		BaseURL:        cfg.API.BaseURL,
 		PageSize:       cfg.API.PageSize,
+		PageDelay:      cfg.API.PageDelay,
 		Timeout:        cfg.API.Timeout,
 		MaxAttempts:    cfg.API.Retry.MaxAttempts,
 		InitialBackoff: cfg.API.Retry.InitialBackoff,
@@ -89,7 +93,7 @@ func main() {
 		cfg.Sync,
 	)
 
-	sched := scheduler.NewScheduler(syncService, cfg.Sync.Interval, logger)
+	sched := scheduler.NewScheduler(syncService, cfg.Sync, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

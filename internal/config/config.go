@@ -25,26 +25,35 @@ type RabbitMQConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	DBName   string `yaml:"dbname"`
-	SSLMode  string `yaml:"sslmode"`
+	Host            string        `yaml:"host"`
+	Port            int           `yaml:"port"`
+	User            string        `yaml:"user"`
+	Password        string        `yaml:"password"`
+	DBName          string        `yaml:"dbname"`
+	SSLMode         string        `yaml:"sslmode"`
+	ConnectTimeout  time.Duration `yaml:"connect_timeout"`
+	MaxOpenConns    int           `yaml:"max_open_conns"`
+	MaxIdleConns    int           `yaml:"max_idle_conns"`
+	ConnMaxLifetime time.Duration `yaml:"conn_max_lifetime"`
 }
 
 func (d DatabaseConfig) DSN() string {
-	return fmt.Sprintf(
+	dsn := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		d.Host, d.Port, d.User, d.Password, d.DBName, d.SSLMode,
 	)
+	if d.ConnectTimeout > 0 {
+		dsn += fmt.Sprintf(" connect_timeout=%d", int(d.ConnectTimeout.Seconds()))
+	}
+	return dsn
 }
 
 type APIConfig struct {
-	BaseURL  string        `yaml:"base_url"`
-	PageSize int           `yaml:"page_size"`
-	Timeout  time.Duration `yaml:"timeout"`
-	Retry    RetryConfig   `yaml:"retry"`
+	BaseURL   string        `yaml:"base_url"`
+	PageSize  int           `yaml:"page_size"`
+	PageDelay time.Duration `yaml:"page_delay"`
+	Timeout   time.Duration `yaml:"timeout"`
+	Retry     RetryConfig   `yaml:"retry"`
 }
 
 type RetryConfig struct {
@@ -55,6 +64,7 @@ type RetryConfig struct {
 
 type SyncConfig struct {
 	Interval          time.Duration `yaml:"interval"`
+	Timeout           time.Duration `yaml:"timeout"`
 	MaxPagesPerSync   int           `yaml:"max_pages_per_sync"`
 	MaxHistoricalDays int           `yaml:"max_historical_days"`
 }
@@ -95,6 +105,9 @@ func (c *Config) setDefaults() {
 	if c.API.PageSize == 0 {
 		c.API.PageSize = 20
 	}
+	if c.API.PageDelay == 0 {
+		c.API.PageDelay = 500 * time.Millisecond
+	}
 	if c.API.Timeout == 0 {
 		c.API.Timeout = 30 * time.Second
 	}
@@ -110,11 +123,26 @@ func (c *Config) setDefaults() {
 	if c.Sync.Interval == 0 {
 		c.Sync.Interval = 5 * time.Minute
 	}
+	if c.Sync.Timeout == 0 {
+		c.Sync.Timeout = 5 * time.Minute
+	}
 	if c.Sync.MaxPagesPerSync == 0 {
 		c.Sync.MaxPagesPerSync = 5
 	}
 	if c.Sync.MaxHistoricalDays == 0 {
 		c.Sync.MaxHistoricalDays = 30
+	}
+	if c.Database.ConnectTimeout == 0 {
+		c.Database.ConnectTimeout = 10 * time.Second
+	}
+	if c.Database.MaxOpenConns == 0 {
+		c.Database.MaxOpenConns = 25
+	}
+	if c.Database.MaxIdleConns == 0 {
+		c.Database.MaxIdleConns = 5
+	}
+	if c.Database.ConnMaxLifetime == 0 {
+		c.Database.ConnMaxLifetime = 5 * time.Minute
 	}
 	if c.LogLevel == "" {
 		c.LogLevel = "info"
